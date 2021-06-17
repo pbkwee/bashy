@@ -14,7 +14,7 @@ avail=$(df -m | egrep '/dev/root | /$' | head -n 1 | awk '{print $4}');  [ -n "$
 #RET:BIGDIRS:312 /usr/bin
 #RET:BIGDIRS:397 /usr/lib/i386-linux-gnu
 
-[ -d /var/log/apache2/ ] && find /var/log/apache2/ -type f -mtime -3  | grep error | xargs --no-run-if-empty grep   -h -c 'MaxRequestWorker|MaxClients'  | grep -v '^0' | sort -n | tail -n 1 | awk '{print "RET:MAXREQUESTWORKERS:"$0}'
+[ -d /var/log/apache2/ ] && find /var/log/apache2/ -type f -mtime -3  | grep error | xargs --no-run-if-empty egrep   -H -c 'MaxRequestWorker|MaxClients'  | grep -v '^0' | sort -n | tail -n 3 | awk '{print "RET:MAXREQUESTWORKERS:"$0}'
 #RET:MAXREQUESTWORKERS:/var/log/apache2/error.log:1
 
 for i in /etc/apache2 /etc/httpd; do [ -d $i ] && find $i -type f | xargs --no-run-if-empty egrep 'MaxRequestW|MaxClients' | egrep -v ': *#' | awk '{print "RET:MAXREQUESTWORKERSETTINGS:"$0}'; done
