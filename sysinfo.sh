@@ -9,6 +9,25 @@ echo "dss:kernel: $(uname -a)"
 echo "dss:bittedness: $(getconf LONG_BIT)"
 df -m | awk '{print "dss:dfm:" $0}'
 df -m | egrep '/dev/root | /$' | head -n 1 | awk '{if($4<1) {print "RET:DISKLOW:OUT:" $4;} else if($4<500) {print "RET:DISKLOW:LOW:" $4;}}'
+avail=$(df -m | egrep '/dev/root | /$' | head -n 1 | awk '{print $4}');  [ -n "$avail" ] && [ "$avail" -lt 500 ] && du -mxS / | sort -n | tail | awk '{if ($1 > 500) {print "RET:BIGDIRS:"$0}}'
+#RET:BIGDIRS:281 /var/lib/mysql/keyword
+#RET:BIGDIRS:312 /usr/bin
+#RET:BIGDIRS:397 /usr/lib/i386-linux-gnu
+
+[ -d /var/log/apache2/ ] && find /var/log/apache2/ -type f -mtime -3  | grep error | xargs --no-run-if-empty grep   -h -c 'MaxRequestWorker|MaxClients'  | grep -v '^0' | sort -n | tail -n 1 | awk '{print "RET:MAXREQUESTWORKERS:"$0}'
+#RET:MAXREQUESTWORKERS:/var/log/apache2/error.log:1
+
+for i in /etc/apache2 /etc/httpd; do [ -d $i ] && find $i -type f | xargs --no-run-if-empty egrep 'MaxRequestW|MaxClients' | egrep -v ': *#' | awk '{print "RET:MAXREQUESTWORKERSETTINGS:"$0}'; done
+#RET:MAXREQUESTWORKERSETTINGS:/etc/apache2/mods-available/mpm_prefork.conf:  MaxRequestWorkers   200
+
+ps auxf | grep -qai '[m]yqsl' && echo "show processlist;" | { while true; do  mysql && break; [ -f /etc/mysql/debian.cnf ] && mysql -u debian-sys-maint -p"$(cat /etc/mysql/debian.cnf | grep password | head -n 1 | awk '{print $3}')" && break;    [ -f /etc/psa/.psa.shadow ] && mysql -u admin -p$(cat /etc/psa/.psa.shadow) && break;    [ -f /root/.mysqlp ] && mysql -u root -p$(cat /root/.mysqlp | egrep -v '^ *$|^root$') && break; break; done;    }  2>/dev/null | egrep -v "\NULL *$|show processlist" | awk '{print "RET:MYSQLPROCESSLIST:"$0}'
+#RET:MYSQLPROCESSLIST:Id  User  Host  db  Command Time  State Info
+
+which apache2ctl 2>&1 >/dev/null && apache2ctl -V | grep 'Server MPM:' | awk '{print "RET:APACHEMPM:"$3}'
+#Server MPM:     prefork
+#RET:APACHEMPM:prefork
+
+
 dmesg -T | egrep 'oom_reaper|Out of memory:|invoked oom-killer' | awk '{print "RET:OOM:"$0}' | tail
 dmesg -T | egrep -qai 'waiting for ip6gre0 to become free' && echo "RET:IP6GRE0ERROR:$(uname -a)"
 
